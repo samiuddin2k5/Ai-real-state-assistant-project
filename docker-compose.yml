@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-real-estate-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ai_real_estate
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ai-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai-real-estate-backend
+    environment:
+      DATABASE_URL: postgresql://user:password@postgres:5432/ai_real_estate
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key}
+      ENVIRONMENT: production
+      DEBUG: "False"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    networks:
+      - ai-network
+    volumes:
+      - ./backend:/app
+      - ./uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai-real-estate-frontend
+    environment:
+      VITE_API_URL: http://backend:8000/api
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - ai-network
+
+volumes:
+  postgres_data:
+
+networks:
+  ai-network:
+    driver: bridge
